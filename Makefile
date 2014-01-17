@@ -1,3 +1,4 @@
+SHELL = C:\Windows\System32\cmd.exe
 hacks = $(wildcard hacks/*.js)
 base = base.js
 config = config.js
@@ -12,7 +13,7 @@ install:
 	@echo "Linking MongoHacker to .mongorc.js in your home directory:"
 
 	@$(MAKE) uninstall
-	ln -sf "$(CURDIR)/mongo_hacker.js" ~/.mongorc.js
+	ln -sf "$(CURDIR)/mongo_hacker.js" %userprofile%/.mongorc.js
 
 uninstall:
 	rm -f ~/.mongorc.js
