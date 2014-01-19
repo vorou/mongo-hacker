@@ -9,10 +9,6 @@
  *
  */
 
-if (_isWindows()) {
-    print("\nSorry! MongoDB Shell Enhancements for Hackers isn't compatible with Windows.\n");
-}
-
 if (typeof db !== 'undefined') {
     var current_version = parseFloat(db.serverBuildInfo().version).toFixed(2)
 
