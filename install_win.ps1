@@ -4,4 +4,4 @@ cp -force .\mongo_hacker.js ~
 rm ~\.mongorc.js
 $hacker = (resolve-path .\mongo_hacker.js).tostring()
 $hacker = $hacker.replace("\", "/")
-add-content ~\.mongorc.js "`r`nload('$hacker')"
+add-content ~\.mongorc.js "load('$hacker')"
