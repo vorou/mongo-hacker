@@ -15,16 +15,11 @@ Install as a global module from npm:
 npm install -g mongo-hacker
 ```
 
-Or clone this repository and link mongo_hacker.js to `.mongorc.js` in your home directory:
+Or clone this repository and link `mongo_hacker.js` to `.mongorc.js` in your home directory:
 
 ```sh
+rm -rf ~/mongorc.js # may be needed as we don't force the link anymore
 make
-```
-
-or (the manual way)
-
-```sh
-ln -sf <mongo-hacker-dir>/mongo_hacker.js ~/.mongorc.js
 ```
 
 Note: This currently only works with the v2.2+ of shell (which you can use with earlier versions of the server safely)
@@ -33,6 +28,7 @@ Note: This currently only works with the v2.2+ of shell (which you can use with 
 
 ### Basic UX
 
+  - Sort document keys by default
   - Highlight querytime if verboseShell is enabled
     - In **green** if querytime is at or below slowms
     - In **red** if query time is above slowms
