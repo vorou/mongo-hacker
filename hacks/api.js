@@ -43,6 +43,21 @@ DB.prototype.rename = function(newName) {
     db = this.getSiblingDB(newName);
 };
 
+Mongo.prototype.getDatabaseNames = function() {
+    // this API addition gives us the following convenience function:
+    //
+    //   db.getMongo().getDatabaseNames()
+    //
+    // which is similar in use to:
+    //
+    //   db.getCollectionNames()
+    //
+    // mongo-hacker FTW :-)
+    return this.getDBs().databases.reduce(function(names, db) {
+        return names.concat(db.name);
+    }, []);
+}
+
 //----------------------------------------------------------------------------
 // API Modifications (additions and changes)
 //----------------------------------------------------------------------------
@@ -70,12 +85,12 @@ DBQuery.prototype.update = function( update ){
 
 // Replace one document
 DBQuery.prototype.replace = function( replacement ){
-   assert( replacement , "need an update object" );
+    assert( replacement , "need an update object" );
 
-   this._validate(replacement);
-   this._db._initExtraInfo();
-   this._mongo.update( this._ns , this._query , replacement , false , false );
-   this._db._getExtraInfo("Replaced");
+    this._validate(replacement);
+    this._db._initExtraInfo();
+    this._mongo.update( this._ns , this._query , replacement , false , false );
+    this._db._getExtraInfo("Replaced");
 };
 
 // Remove is always multi

@@ -1,4 +1,5 @@
 __indent = Array(mongo_hacker_config.indent + 1).join(' ');
+__colorize = (_isWindows() && !mongo_hacker_config['force_color']) ? false : true;
 
 ObjectId.prototype.toString = function() {
     return this.str;
@@ -52,6 +53,11 @@ function surround(name, inside) {
     return [name, '(', inside, ')'].join('');
 }
 
+Number.prototype.commify = function() {
+    // http://stackoverflow.com/questions/2901102
+    return this.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
 NumberLong.prototype.tojson = function() {
     var color = mongo_hacker_config.colors.number;
     var output = colorize('"' + this.toString().match(/-?\d+/)[0] + '"', color);
@@ -70,7 +76,7 @@ BinData.prototype.tojson = function(indent , nolint) {
     var binDataColor = mongo_hacker_config.colors.binData;
 
     if (this.subtype() === 3) {
-        var ouput = colorize('"' + uuidToString(this) + '"', color) + ', '
+        var output = colorize('"' + uuidToString(this) + '"', uuidColor) + ', '
         output += colorize('"' + uuidType + '"', uuidColor)
         return surround('UUID', output);
     } else if (this.subtype() === 4) {
@@ -113,7 +119,7 @@ DBQuery.prototype.shellPrint = function(){
             var explain = this.clone();
             explain._ensureSpecial();
             explain._query.$explain = true;
-            explain._limit = Math.abs(n._limit) * -1;
+            explain._limit = Math.abs(n) * -1;
             var result = explain.next();
             var type = result.cursor;
 
@@ -140,9 +146,14 @@ DBQuery.prototype.shellPrint = function(){
     }
 };
 
-tojsonObject = function( x, indent, nolint ) {
+function isInArray(array, value) {
+    return array.indexOf(value) > -1;
+}
+
+tojsonObject = function( x, indent, nolint, sort_keys ) {
     var lineEnding = nolint ? " " : "\n";
     var tabSpace = nolint ? "" : __indent;
+    var sortKeys = (null == sort_keys) ? mongo_hacker_config.sort_keys : sort_keys;
 
     assert.eq( ( typeof x ) , "object" , "tojsonObject needs object, not [" + ( typeof x ) + "]" );
 
@@ -150,7 +161,7 @@ tojsonObject = function( x, indent, nolint ) {
         indent = "";
 
     if ( typeof( x.tojson ) == "function" && x.tojson != tojson ) {
-        return x.tojson(indent,nolint);
+        return x.tojson( indent, nolint );
     }
 
     if ( x.constructor && typeof( x.constructor.tojson ) == "function" && x.constructor.tojson != tojson ) {
@@ -183,8 +194,13 @@ tojsonObject = function( x, indent, nolint ) {
     for(var key in keys)
         keylist.push(key);
 
-    if ( mongo_hacker_config.sort_keys ) {
-      keylist.sort();
+    if ( sortKeys ) {
+        // Disable sorting if this object looks like an index spec
+        if ( (isInArray(keylist, "v") && isInArray(keylist, "key") && isInArray(keylist, "name") && isInArray(keylist, "ns")) ) {
+            sortKeys = false;
+        } else {
+            keylist.sort();
+        }
     }
 
     for ( var i=0; i<keylist.length; i++) {
@@ -195,7 +211,7 @@ tojsonObject = function( x, indent, nolint ) {
             continue;
 
         var color = mongo_hacker_config.colors.key;
-        s += indent + colorize("\"" + key + "\"", color) + ": " + tojson( val, indent , nolint );
+        s += indent + colorize("\"" + key + "\"", color) + ": " + tojson( val, indent , nolint, sortKeys );
         if (num != total) {
             s += ",";
             num++;
@@ -209,7 +225,10 @@ tojsonObject = function( x, indent, nolint ) {
 };
 
 
-tojson = function( x, indent , nolint ) {
+tojson = function( x, indent , nolint, sort_keys ) {
+
+    var sortKeys = (null == sort_keys) ? mongo_hacker_config.sort_keys : sort_keys;
+
     if ( x === null )
         return colorize("null", mongo_hacker_config.colors['null']);
 
@@ -256,7 +275,7 @@ tojson = function( x, indent , nolint ) {
     case "boolean":
         return colorize("" + x, mongo_hacker_config.colors['boolean']);
     case "object": {
-        s = tojsonObject( x, indent , nolint );
+        s = tojsonObject( x, indent , nolint, sortKeys );
         if ( ( nolint === null || nolint === true ) && s.length < 80 && ( indent === null || indent.length === 0 ) ){
             s = s.replace( /[\s\r\n ]+/gm , " " );
         }

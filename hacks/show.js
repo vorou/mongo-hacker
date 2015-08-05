@@ -45,65 +45,40 @@ shellHelper.show = function (what) {
     }
 
     if (what == "users") {
-        db.system.users.find().forEach(printjson);
+        db.getUsers().forEach(printjson);
+        return "";
+    }
+
+    if (what == "roles") {
+        db.getRoles({showBuiltinRoles: true}).forEach(printjson);
         return "";
     }
 
     if (what == "collections" || what == "tables") {
-        var maxNameLength = 0;
-        var paddingLength = 2;
-        db.getCollectionNames().forEach(function (collectionName) {
-          if (collectionName.length > maxNameLength) {
-            maxNameLength = collectionName.length;
-          }
+        var collectionNames = db.getCollectionNames();
+        var collectionSizes = collectionNames.map(function (name) {
+            var stats = db.getCollection(name).stats();
+            var size = (stats.size / 1024 / 1024).toFixed(3);
+            return (size + "MB");
         });
-        db.getCollectionNames().forEach(function (collectionName) {
-          var stats = db[collectionName].stats();
-          while(collectionName.length < maxNameLength + paddingLength)
-            collectionName = collectionName + " ";
-          var size = (stats.size / 1024 / 1024).toFixed(3),
-              storageSize = (stats.storageSize / 1024 / 1024).toFixed(3);
-
-          print(colorize(collectionName, { color: 'green', bright: true }) + size + "MB / " + storageSize + "MB")
+        var collectionStorageSizes = collectionNames.map(function (name) {
+            var stats = db.getCollection(name).stats();
+            var storageSize = (stats.storageSize / 1024 / 1024).toFixed(3);
+            return (storageSize + "MB");
         });
+        printPaddedColumns(collectionNames, mergePaddedValues(collectionSizes, collectionStorageSizes), mongo_hacker_config['colors']['collectionNames']);
         return "";
     }
 
     if (what == "dbs" || what == "databases") {
-        var dbs = db.getMongo().getDBs();
-        var dbinfo = [];
-        var maxNameLength = 0;
-        var maxGbDigits = 0;
-
-        dbs.databases.forEach(function (x){
-            var sizeStr = (x.sizeOnDisk / 1024 / 1024 / 1024).toFixed(3);
-            var nameLength = x.name.length;
-            var gbDigits = sizeStr.indexOf(".");
-
-            if( nameLength > maxNameLength) maxNameLength = nameLength;
-            if( gbDigits > maxGbDigits ) maxGbDigits = gbDigits;
-
-            dbinfo.push({
-                name:      x.name,
-                size:      x.sizeOnDisk,
-                size_str:  sizeStr,
-                name_size: nameLength,
-                gb_digits: gbDigits
-            });
+        var databaseNames = db.getMongo().getDBs().databases.map(function(db) {
+            return db.name;
         });
-
-        dbinfo.sort(function (a,b) { a.name - b.name });
-        dbinfo.forEach(function (db) {
-            var namePadding = maxNameLength - db.name_size;
-            var sizePadding = maxGbDigits   - db.gb_digits;
-            var padding = Array(namePadding + sizePadding + 3).join(" ");
-            if (db.size > 1) {
-                print(colorize(db.name, { color: 'green', bright: true }) + padding + db.size_str + "GB");
-            } else {
-                print(colorize(db.name, { color: 'green', bright: true }) + padding + "(empty)");
-            }
+        var databaseSizes = db.getMongo().getDBs().databases.map(function(db) {
+            var sizeInGigaBytes = (db.sizeOnDisk / 1024 / 1024 / 1024).toFixed(3);
+            return (db.sizeOnDisk > 1) ? (sizeInGigaBytes + "GB") : "(empty)";
         });
-
+        printPaddedColumns(databaseNames, databaseSizes, mongo_hacker_config['colors']['databaseNames']);
         return "";
     }
 
@@ -155,8 +130,13 @@ shellHelper.show = function (what) {
                     print( res.log[i] )
                 }
                 return "";
-            } else if (res.errmsg == "unauthorized") {
-                // Don't print of startupWarnings command failed due to auth
+            } else if (res.errmsg == "no such cmd: getLog" ) {
+                // Don't print if the command is not available
+                return "";
+            } else if (res.code == 13 /*unauthorized*/ ||
+                       res.errmsg == "unauthorized" ||
+                       res.errmsg == "need to login") {
+                // Don't print if startupWarnings command failed due to auth
                 return "";
             } else {
                 print("Error while trying to show server startup warnings: " + res.errmsg);
